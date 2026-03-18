@@ -1,0 +1,7 @@
+watchdog==6.0.0
+Pillow==10.4.0
+pytesseract==0.3.10
+opencv-python==4.11.0.86  # ← новая версия
+pdfplumber==0.10.0
+python-docx==0.8.11
+mutagen==1.46.0

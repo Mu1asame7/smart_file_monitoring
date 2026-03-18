@@ -1,0 +1,52 @@
+# Виртуальное окружение
+venv/
+env/
+ENV/
+
+# Кэш Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Файлы конфигурации с секретами
+.env
+.env.local
+.env.*.local
+
+# Базы данных
+*.db
+*.sqlite
+*.sqlite3
+
+# Логи
+logs/
+*.log
+
+# Редакторы и IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Директории с временными файлами
+tmp/
+temp/
+downloads/
+
+# Файлы отчетов и покрытия тестами
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Дистрибутивы и сборки
+dist/
+build/
+*.egg-info/
