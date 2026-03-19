@@ -2,6 +2,9 @@ import sqlite3
 import os
 import json
 from datetime import datetime
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class FileDataBase:
@@ -57,6 +60,7 @@ class FileDataBase:
         modified_time = datetime.fromtimestamp(os.path.getmtime(path_file))
         status = "active"
         created_at = datetime.fromtimestamp(os.path.getctime(path_file))
+        content_text = self._extract_text(path_file)
 
         with sqlite3.connect(self.db_path) as connection:
             cursor = connection.cursor()
@@ -118,7 +122,6 @@ class FileDataBase:
 
             if existing:
                 print(f"⚠️ Новый путь уже занят файлом id={existing[0]}")
-                # Вариант 1: удалить старую запись
                 cursor.execute("DELETE FROM files WHERE id = ?", (existing[0],))
                 print(f"✅ Старая запись удалена")
 
@@ -155,4 +158,87 @@ class FileDataBase:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM files WHERE path = ?", (path,))
             return cursor.fetchone() is not None
-        
+
+    def _extract_text(self, file_path):
+
+        if not os.path.exists(file_path):
+            logger.warning(f"Файл {file_path} не существует")
+            return ""
+
+        file_size = os.path.getsize(file_path)
+
+        if file_size > 10 * 1024 * 1024:
+            logger.warning(
+                f"Файл {file_path} слишком большой ({file_size} bytes). Пропускаем"
+            )
+            return ""
+
+        ext = os.path.splitext(file_path)[1]
+
+        if not ext == ".txt":
+            return
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as file:
+                content = file.read()
+        except UnicodeDecodeError:
+            with open(file_path, "r", encoding="cp1251") as file:
+                content = file.read()
+        except Exception as e:
+            logger.error(f"Ошибка при чтении файла {file_path}: {e}")
+
+        return content
+
+    def search(self, query: str):
+        print(f"🔍 Поиск запроса: '{query}'")
+        print(f"📂 База данных: {self.db_path}")
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+            SELECT f.path, f.filename, f.category
+            FROM files f
+            JOIN files_fts fts ON f.id = fts.rowid
+            WHERE files_fts MATCH ?
+            ORDER BY rank
+        """,
+                (query,),
+            )
+            results = cursor.fetchall()
+            print(f"📊 Найдено результатов: {len(results)}")
+            return results
+
+    # def recreate_fts(self):
+    #     with sqlite3.connect(self.db_path, timeout=10) as conn:
+    #         cursor = conn.cursor()
+
+    #         # Удаляем старую виртуальную таблицу
+    #         cursor.execute("DROP TABLE IF EXISTS files_fts")
+
+    #         # Создаем заново с явным tokenizer
+    #         cursor.execute(
+    #             """
+    #             CREATE VIRTUAL TABLE files_fts
+    #             USING fts5(
+    #                 filename,
+    #                 content_text,
+    #                 tokenize='porter unicode61',
+    #                 content=files
+    #             )
+    #         """
+    #         )
+
+    #         # Заполняем данными
+    #         cursor.execute(
+    #             """
+    #             INSERT INTO files_fts(rowid, filename, content_text)
+    #             SELECT id, filename, content_text FROM files
+    #         """
+    #         )
+
+    #         # Принудительно перестраиваем индекс (на всякий случай)
+    #         cursor.execute("INSERT INTO files_fts(files_fts) VALUES('rebuild')")
+
+    #         conn.commit()
+    #         print("FTS5 таблица пересоздана и индекс построен")
